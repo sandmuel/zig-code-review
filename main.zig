@@ -1,5 +1,6 @@
 const std = @import("std");
 const game = @import("game.zig");
+const renderer = @import("renderer.zig");
 const gl = @import("gl");
 
 var shader_program: u32 = undefined;
@@ -8,31 +9,15 @@ var vbo: u32 = undefined;
 var ebo: u32 = undefined;
 
 pub fn main() void {
-    game.run(oneShot, draw, cleanup);
+    game.run(entry, draw, cleanup);
 }
 
-fn oneShot() void {
+fn entry() void {
     // Vertex shader.
-    const vert_shader_content = @embedFile("basic.vert.glsl");
-    const vert_shader: u32 = gl.CreateShader(gl.VERTEX_SHADER);
-    gl.ShaderSource(vert_shader, 1, @ptrCast(&vert_shader_content), null);
-    gl.CompileShader(vert_shader);
-
-    var success: i32 = undefined;
-    gl.GetShaderiv(vert_shader, gl.COMPILE_STATUS, &success);
-    std.debug.print("{}", .{success});
-    if (success == 0) {
-        var infoLog: [512]u8 = undefined;
-        gl.GetShaderInfoLog(vert_shader, 512, null, @ptrCast(&infoLog));
-        std.debug.print("{s}", .{infoLog});
-        std.debug.print("{}", .{gl.GetError()});
-    }
+    const vert_shader = renderer.loadShader("basic.vert.glsl", .vertex);
 
     // Fragment shader.
-    const frag_shader_content = @embedFile("basic.frag.glsl");
-    const frag_shader: u32 = gl.CreateShader(gl.FRAGMENT_SHADER);
-    gl.ShaderSource(frag_shader, 1, @ptrCast(&frag_shader_content), null);
-    gl.CompileShader(frag_shader);
+    const frag_shader = renderer.loadShader("basic.frag.glsl", .fragment);
 
     // Link shaders.
     shader_program = gl.CreateProgram();
@@ -75,19 +60,19 @@ fn oneShot() void {
     gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 3 * @sizeOf(f32), 0);
     gl.EnableVertexAttribArray(0);
     //gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE);
-
-    // We can unbind from this object.
-    //gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0);
-    //gl.BindBuffer(gl.ARRAY_BUFFER, 0);
-    //gl.BindVertexArray(0);
 }
 
-fn draw(delta: f32) void {
+fn draw(delta: f64) void {
     gl.ClearColor(0, 0, 0, 1);
     gl.Clear(gl.COLOR_BUFFER_BIT);
     gl.UseProgram(shader_program);
+
+    const wave_color: f32 = @floatCast((@sin(game.getTime()) + 1) / 2);
+    const wave_color_loc: i32 = gl.GetUniformLocation(shader_program, "waveColor");
+    gl.Uniform4f(wave_color_loc, wave_color, wave_color, wave_color, 1);
+
     gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, 0);
-    std.debug.print("delta: {d}\nfps: {d}\n", .{ delta, 1 / delta });
+    std.debug.print("time: {d}\ndelta: {d}\nfps: {d}\n", .{ game.getTime(), delta, 1 / delta });
 }
 
 fn cleanup() void {

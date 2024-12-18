@@ -6,8 +6,8 @@ pub const gl = @import("gl");
 var gl_procs: gl.ProcTable = undefined;
 
 pub fn run(
-    comptime oneShot: fn () void,
-    comptime draw: fn (delta: f32) void,
+    comptime entry: fn () void,
+    comptime draw: fn (delta: f64) void,
     comptime cleanup: fn () void,
 ) void {
     glfw.setErrorCallback(logGlfwError);
@@ -40,15 +40,14 @@ pub fn run(
     defer gl.makeProcTableCurrent(null);
 
     // One shot stuff that gets passed to us.
-    oneShot();
+    entry();
 
     // The game loop.
-    var last_time = std.time.microTimestamp();
+    var last_time: f64 = 0;
     while (!window.shouldClose()) {
         // Get delta time
-        const micro_time_diff = std.time.microTimestamp() - last_time;
-        last_time = std.time.microTimestamp();
-        const delta = @as(f32, @floatFromInt(micro_time_diff)) * 0.000001;
+        const delta = glfw.getTime() - last_time;
+        last_time = glfw.getTime();
 
         // Read input.
 
@@ -62,6 +61,10 @@ pub fn run(
 
     // Cleanup steps passed to us.
     cleanup();
+}
+
+pub fn getTime() f64 {
+    return glfw.getTime();
 }
 
 /// GLFW error callback function.
